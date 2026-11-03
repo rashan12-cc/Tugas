@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Absensi Sekolah - SMAN 19 Bandung</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f4f6f9;
+            color: #333;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        header h1 {
+            color: #2c3e50;
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        header p {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        /* Filter & Controls */
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .info-group {
+            display: flex;
+            gap: 15px;
+        }
+
+        .info-group div {
+            font-size: 14px;
+        }
+
+        .info-group label {
+            font-weight: bold;
+            color: #34495e;
+        }
+
+        .search-box input {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            outline: none;
+            width: 200px;
+        }
+
+        /* Summary Cards */
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .card-hadir { background-color: #2ecc71; }
+        .card-izin  { background-color: #3498db; }
+        .card-sakit { background-color: #f1c40f; }
+        .card-alpha { background-color: #e74c3c; }
+
+        .card span {
+            display: block;
+            font-size: 22px;
+            margin-top: 5px;
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            color: #2c3e50;
+        }
+
+        /* Status Options (Radio Buttons) */
+        .status-options {
+            display: flex;
+            gap: 10px;
+        }
+
+        .status-options label {
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        /* Action Buttons */
+        .actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .btn-save {
+            background-color: #27ae60;
+            color: white;
+        }
+
+        .btn-save:hover {
+            background-color: #219150;
+        }
+
+        .btn-print {
+            background-color: #7f8c8d;
+            color: white;
+        }
+
+        .btn-print:hover {
+            background-color: #6c7a7d;
+        }
+
+        @media print {
+            .controls, .actions, .search-box {
+                display: none;
+            }
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Daftar Kehadiran Siswa</h1>
+        <p>SMA Negeri 19 Bandung - Tahun Ajaran 2026</p>
+    </header>
+
+    <!-- Informasi Kelas & Tanggal -->
+    <div class="controls">
+        <div class="info-group">
+            <div>
+                <label>Kelas:</label> XII IPA 1
+            </div>
+            <div>
+                <label>Tanggal:</label> <span id="current-date"></span>
+            </div>
+        </div>
+        <div class="search-box">
+            <input type="text" id="searchInput" onkeyup="filterSiswa()" placeholder="Cari nama atau NISN...">
+        </div>
+    </div>
+
+    <!-- Ringkasan Absensi -->
+    <div class="summary-cards">
+        <div class="card card-hadir">Hadir <span id="count-hadir">0</span></div>
+        <div class="card card-izin">Izin <span id="count-izin">0</span></div>
+        <div class="card card-sakit">Sakit <span id="count-sakit">0</span></div>
+        <div class="card card-alpha">Alpha <span id="count-alpha">0</span></div>
+    </div>
+
+    <!-- Tabel Absensi -->
+    <table id="attendanceTable">
+        <thead>
+            <tr>
+                <th style="width: 50px;">No</th>
+                <th style="width: 120px;">NISN</th>
+                <th>Nama Siswa</th>
+                <th style="width: 300px;">Status Kehadiran</th>
+            </tr>
+        </thead>
+        <tbody id="studentList">
+            <!-- Data siswa dimuat dari JS -->
+        </tbody>
+    </table>
+
+    <!-- Tombol Aksi -->
+    <div class="actions">
+        <button class="btn btn-print" onclick="window.print()">Cetak Rekap</button>
+        <button class="btn btn-save" onclick="simpanAbsensi()">Simpan Absensi</button>
+    </div>
+</div>
+
+<script>
+    // Data dummy siswa
+    const siswaData = [
+        { id: 1, nisn: "0051234001", nama: "Ahmad Dahlan" },
+        { id: 2, nisn: "0051234002", nama: "Budi Santoso" },
+        { id: 3, nisn: "0051234003", nama: "Citra Lestari" },
+        { id: 4, nisn: "0051234004", nama: "Dewi Anggraini" },
+        { id: 5, nisn: "0051234005", nama: "Eko Prasetyo" }
+    ];
+
+    // Menampilkan Tanggal Hari Ini
+    const today = new Date();
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    document.getElementById('current-date').innerText = today.toLocaleDateString('id-ID', options);
+
+    // Memuat tabel siswa
+    function loadStudents() {
+        const tbody = document.getElementById('studentList');
+        tbody.innerHTML = '';
+
+        siswaData.forEach((siswa, index) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${siswa.nisn}</td>
+                <td class="student-name">${siswa.nama}</td>
+                <td>
+                    <div class="status-options">
+                        <label><input type="radio" name="status-${siswa.id}" value="Hadir" checked onclick="updateSummary()"> Hadir</label>
+                        <label><input type="radio" name="status-${siswa.id}" value="Izin" onclick="updateSummary()"> Izin</label>
+                        <label><input type="radio" name="status-${siswa.id}" value="Sakit" onclick="updateSummary()"> Sakit</label>
+                        <label><input type="radio" name="status-${siswa.id}" value="Alpha" onclick="updateSummary()"> Alpha</label>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        updateSummary();
+    }
+
+    // Mengupdate hitungan jumlah absensi
+    function updateSummary() {
+        let hadir = 0, izin = 0, sakit = 0, alpha = 0;
+
+        siswaData.forEach(siswa => {
+            const selected = document.querySelector(`input[name="status-${siswa.id}"]:checked`);
+            if (selected) {
+                switch(selected.value) {
+                    case 'Hadir': hadir++; break;
+                    case 'Izin': izin++; break;
+                    case 'Sakit': sakit++; break;
+                    case 'Alpha': alpha++; break;
+                }
+            }
+        });
+
+        document.getElementById('count-hadir').innerText = hadir;
+        document.getElementById('count-izin').innerText = izin;
+        document.getElementById('count-sakit').innerText = sakit;
+        document.getElementById('count-alpha').innerText = alpha;
+    }
+
+    // Fitur pencarian siswa
+    function filterSiswa() {
+        const input = document.getElementById('searchInput').value.toLowerCase();
+        const rows = document.querySelectorAll('#studentList tr');
+
+        rows.forEach(row => {
+            const text = row.innerText.toLowerCase();
+            if (text.includes(input)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // Simulasi simpan data
+    function simpanAbsensi() {
+        const rekap = siswaData.map(siswa => {
+            const status = document.querySelector(`input[name="status-${siswa.id}"]:checked`).value;
+            return { id: siswa.id, nama: siswa.nama, status: status };
+        });
+
+        console.log("Data Absensi Disimpan:", rekap);
+        alert("Data absensi SMAN 19 Bandung berhasil disimpan!");
+    }
+
+    // Inisialisasi saat halaman pertama kali dibuka
+    window.onload = loadStudents;
+</script>
+
+</body>
+</html>
